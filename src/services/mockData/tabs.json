@@ -1,0 +1,26 @@
+[
+  {
+    "Id": 1,
+    "sessionId": 1,
+    "proxyUsed": "192.168.1.1:8080",
+    "status": "running",
+    "viewDuration": 45,
+    "errors": []
+  },
+  {
+    "Id": 2,
+    "sessionId": 1,
+    "proxyUsed": "10.0.0.1:3128",
+    "status": "running",
+    "viewDuration": 32,
+    "errors": []
+  },
+  {
+    "Id": 3,
+    "sessionId": 1,
+    "proxyUsed": null,
+    "status": "error",
+    "viewDuration": 0,
+    "errors": ["Connection timeout", "Proxy unreachable"]
+  }
+]

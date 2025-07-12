@@ -1,0 +1,29 @@
+[
+  {
+    "Id": 1,
+    "videoUrl": "https://youtube.com/watch?v=dQw4w9WgXcQ",
+    "videoType": "video",
+    "tabCount": 5,
+    "proxies": [
+      {
+        "address": "192.168.1.1",
+        "port": 8080,
+        "protocol": "http",
+        "status": "active"
+      }
+    ],
+    "status": "completed",
+    "startTime": "2024-01-15T10:30:00Z",
+    "viewCount": 25
+  },
+  {
+    "Id": 2,
+    "videoUrl": "https://youtube.com/shorts/abc123",
+    "videoType": "short",
+    "tabCount": 10,
+    "proxies": [],
+    "status": "completed",
+    "startTime": "2024-01-15T14:15:00Z",
+    "viewCount": 47
+  }
+]
