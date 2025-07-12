@@ -13,7 +13,8 @@ const Dashboard = () => {
     isLoading,
     error,
     startSession,
-    stopSession
+    stopSession,
+    openWindow
   } = useViewSession();
 
   return (
@@ -44,10 +45,11 @@ const Dashboard = () => {
                 isRunning={isRunning}
               />
               
-              <TabGrid
+<TabGrid
                 tabs={tabs}
                 isLoading={isLoading}
                 onStartSession={() => {}}
+                openWindow={openWindow}
               />
             </div>
             

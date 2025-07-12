@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
 import sessionService from "@/services/api/sessionService";
 import tabService from "@/services/api/tabService";
-
 const useViewSession = () => {
   const [session, setSession] = useState(null);
   const [tabs, setTabs] = useState([]);
@@ -73,7 +73,7 @@ const useViewSession = () => {
     }
   }, [session, tabs]);
 
-  const simulateViewing = useCallback((sessionId, sessionTabs) => {
+const simulateViewing = useCallback((sessionId, sessionTabs) => {
     const interval = setInterval(async () => {
       if (!isRunning) {
         clearInterval(interval);
@@ -81,35 +81,33 @@ const useViewSession = () => {
       }
 
       try {
-        // Simulate view generation (1-3 views per interval)
-        const viewsGenerated = Math.floor(Math.random() * 3) + 1;
+        // Check for running windows and update their durations
+        const runningTabs = sessionTabs.filter(tab => tab.status === "running");
         
-        // Update session view count
-        const updatedSession = await sessionService.update(sessionId, {
-          viewCount: (session?.viewCount || 0) + viewsGenerated
-        });
-        setSession(updatedSession);
+        if (runningTabs.length > 0) {
+          const updatedTabs = await Promise.all(
+            runningTabs.map(tab => 
+              tabService.update(tab.Id, {
+                viewDuration: (tab.viewDuration || 0) + Math.floor(Math.random() * 10) + 5
+              })
+            )
+          );
 
-        // Update random tabs with new durations
-        const randomTabs = sessionTabs
-          .sort(() => 0.5 - Math.random())
-          .slice(0, Math.min(viewsGenerated, sessionTabs.length));
-
-        const updatedTabs = await Promise.all(
-          randomTabs.map(tab => 
-            tabService.update(tab.Id, {
-              viewDuration: (tab.viewDuration || 0) + Math.floor(Math.random() * 10) + 5
+          // Update tabs state
+          setTabs(prevTabs => 
+            prevTabs.map(tab => {
+              const updated = updatedTabs.find(ut => ut.Id === tab.Id);
+              return updated || tab;
             })
-          )
-        );
+          );
 
-        // Update tabs state
-        setTabs(prevTabs => 
-          prevTabs.map(tab => {
-            const updated = updatedTabs.find(ut => ut.Id === tab.Id);
-            return updated || tab;
-          })
-        );
+          // Update session view count based on running windows
+          const viewsGenerated = runningTabs.length;
+          const updatedSession = await sessionService.update(sessionId, {
+            viewCount: (session?.viewCount || 0) + viewsGenerated
+          });
+          setSession(updatedSession);
+        }
 
       } catch (err) {
         console.error("Simulation error:", err);
@@ -119,14 +117,68 @@ const useViewSession = () => {
     return () => clearInterval(interval);
   }, [isRunning, session]);
 
-  return {
+  const openWindow = useCallback(async (tabId) => {
+    if (!session || !session.videoUrl) {
+      toast.error("No video URL available");
+      return;
+    }
+
+    try {
+      // Open the window
+      const windowRef = window.open(
+        session.videoUrl,
+        `viewboost_window_${tabId}`,
+        'width=800,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!windowRef) {
+        toast.error("Window blocked by browser. Please allow popups.");
+        return;
+      }
+
+      // Update tab status and store window reference
+      const updatedTab = await tabService.update(tabId, { 
+        status: "running",
+        windowRef: windowRef
+      });
+
+      // Update tabs state
+      setTabs(prevTabs => 
+        prevTabs.map(tab => 
+          tab.Id === tabId ? updatedTab : tab
+        )
+      );
+
+      toast.success("Window opened successfully!");
+
+      // Monitor window close
+      const checkClosed = setInterval(() => {
+        if (windowRef.closed) {
+          clearInterval(checkClosed);
+          tabService.update(tabId, { status: "idle", windowRef: null });
+          setTabs(prevTabs => 
+            prevTabs.map(tab => 
+              tab.Id === tabId ? { ...tab, status: "idle" } : tab
+            )
+          );
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error("Failed to open window:", error);
+      toast.error("Failed to open window");
+    }
+  }, [session]);
+
+return {
     session,
     tabs,
     isRunning,
     isLoading,
     error,
     startSession,
-    stopSession
+    stopSession,
+    openWindow
   };
 };
 

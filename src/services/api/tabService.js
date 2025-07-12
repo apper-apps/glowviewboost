@@ -13,7 +13,7 @@ const tabService = {
     return tabs.filter(tab => tab.sessionId === parseInt(sessionId));
   },
 
-  create: async (tabData) => {
+create: async (tabData) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const maxId = tabs.length > 0 ? Math.max(...tabs.map(t => t.Id)) : 0;
@@ -21,20 +21,24 @@ const tabService = {
       Id: maxId + 1,
       ...tabData,
       viewDuration: 0,
-      errors: []
+      errors: [],
+      windowRef: null
     };
     
     tabs.push(newTab);
     return { ...newTab };
   },
 
-  update: async (id, updateData) => {
+update: async (id, updateData) => {
     await new Promise(resolve => setTimeout(resolve, 200));
     
     const index = tabs.findIndex(t => t.Id === parseInt(id));
     if (index === -1) return null;
     
-    tabs[index] = { ...tabs[index], ...updateData };
+    // Handle window reference separately to avoid serialization issues
+    const { windowRef, ...serializableData } = updateData;
+    tabs[index] = { ...tabs[index], ...serializableData };
+    
     return { ...tabs[index] };
   },
 
@@ -46,13 +50,14 @@ const tabService = {
       const maxId = tabs.length > 0 ? Math.max(...tabs.map(t => t.Id)) : 0;
       const proxy = proxies[i % proxies.length] || null;
       
-      const newTab = {
+const newTab = {
         Id: maxId + 1 + i,
         sessionId: parseInt(sessionId),
         proxyUsed: proxy ? `${proxy.address}:${proxy.port}` : null,
         status: "idle",
         viewDuration: 0,
-        errors: []
+        errors: [],
+        windowRef: null
       };
       
       tabs.push(newTab);

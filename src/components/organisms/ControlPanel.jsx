@@ -182,9 +182,9 @@ const handleManualProxiesChange = (e) => {
             required
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
-              label="Number of Tabs"
+              label="Number of Windows"
               type="number"
               min="1"
               max="20"
@@ -193,17 +193,18 @@ const handleManualProxiesChange = (e) => {
               error={errors.tabCount}
               required
             />
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Tab Preview</label>
+<div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">Window Preview</label>
               <div className="bg-background border border-secondary/20 rounded-lg p-3 h-[42px] flex items-center">
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(tabCount, 8) }).map((_, i) => (
                     <div 
                       key={i} 
-                      className="w-2 h-2 bg-primary rounded-full animate-pulse"
+                      className="w-4 h-3 bg-primary/30 border border-primary rounded-sm flex items-center justify-center animate-pulse"
                       style={{ animationDelay: `${i * 0.1}s` }}
-                    />
+                    >
+                      <div className="w-1 h-1 bg-primary rounded-full" />
+                    </div>
                   ))}
                   {tabCount > 8 && (
                     <span className="text-xs text-gray-400 ml-2">+{tabCount - 8}</span>
@@ -282,16 +283,16 @@ const handleManualProxiesChange = (e) => {
         <div className="space-y-4">
           <div className="bg-background border border-secondary/20 rounded-lg p-4">
             <h3 className="font-medium text-white mb-3">Session Stats</h3>
-            <div className="space-y-2 text-sm">
+<div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Active Tabs:</span>
+                <span className="text-gray-400">Active Windows:</span>
                 <span className="text-white">{session?.tabCount || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Views Generated:</span>
                 <span className="text-success font-medium">{session?.viewCount || 0}</span>
               </div>
-<div className="flex justify-between">
+              <div className="flex justify-between">
                 <span className="text-gray-400">Proxies:</span>
                 <span className="text-white">
                   {useAutoProxies ? 

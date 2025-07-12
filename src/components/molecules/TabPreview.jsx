@@ -4,7 +4,7 @@ import Badge from "@/components/atoms/Badge";
 import { cn } from "@/utils/cn";
 import React from "react";
 
-const TabPreview = ({ tab, index }) => {
+const TabPreview = ({ tab, index, openWindow }) => {
   const statusConfig = {
     idle: { color: "border-gray-600", bg: "bg-surface" },
     running: { color: "border-success", bg: "bg-success/10" },
@@ -14,6 +14,11 @@ const TabPreview = ({ tab, index }) => {
 
   const config = statusConfig[tab.status] || statusConfig.idle;
 
+  const handleOpenWindow = () => {
+    if (openWindow && tab.Id) {
+      openWindow(tab.Id);
+    }
+  };
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -25,9 +30,9 @@ const TabPreview = ({ tab, index }) => {
         config.bg
       )}
     >
-      <div className="flex items-center justify-between mb-3">
+<div className="flex items-center justify-between mb-3">
         <Badge variant={tab.status === "running" ? "active" : tab.status}>
-          Tab {index + 1}
+          Window {index + 1}
         </Badge>
         {tab.status === "running" && (
           <motion.div
@@ -38,10 +43,17 @@ const TabPreview = ({ tab, index }) => {
         )}
       </div>
 
-      <div className="bg-gray-800 rounded-lg h-16 flex items-center justify-center mb-3">
+      <div className="bg-gray-800 rounded-lg h-16 flex items-center justify-center mb-3 relative">
         <ApperIcon name="Youtube" className="w-8 h-8 text-red-500" />
+        {tab.status === "idle" && (
+          <button
+            onClick={handleOpenWindow}
+            className="absolute inset-0 bg-primary/20 hover:bg-primary/30 rounded-lg border-2 border-primary/50 hover:border-primary transition-all flex items-center justify-center group"
+          >
+            <ApperIcon name="ExternalLink" className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+          </button>
+        )}
       </div>
-
       <div className="space-y-2 text-xs">
         <div className="flex justify-between">
           <span className="text-gray-400">Proxy:</span>
