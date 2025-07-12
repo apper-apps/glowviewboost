@@ -14,7 +14,7 @@ const sessionService = {
     return session ? { ...session } : null;
   },
 
-  create: async (sessionData) => {
+create: async (sessionData) => {
     await new Promise(resolve => setTimeout(resolve, 400));
     
     const maxId = sessions.length > 0 ? Math.max(...sessions.map(s => s.Id)) : 0;
@@ -22,7 +22,9 @@ const sessionService = {
       Id: maxId + 1,
       ...sessionData,
       startTime: new Date().toISOString(),
-      viewCount: 0
+      viewCount: 0,
+      proxyCount: sessionData.proxies?.length || 0,
+      useAutoProxies: sessionData.useAutoProxies || false
     };
     
     sessions.push(newSession);

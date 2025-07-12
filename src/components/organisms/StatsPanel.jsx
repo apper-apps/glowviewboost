@@ -95,9 +95,14 @@ const StatsPanel = ({ session, isRunning }) => {
               <span className="text-white capitalize">{session.videoType || "unknown"}</span>
             </div>
             
-            <div className="flex items-center justify-between">
+<div className="flex items-center justify-between">
               <span className="text-gray-400">Proxies:</span>
-              <span className="text-white">{session.proxies?.length || 0}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-white">{session.proxies?.length || 0}</span>
+                {session.useAutoProxies && (
+                  <Badge variant="info" className="text-xs">Auto</Badge>
+                )}
+              </div>
             </div>
             
             {session.startTime && (

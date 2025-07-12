@@ -5,12 +5,16 @@ import ApperIcon from "@/components/ApperIcon";
 import Button from "@/components/atoms/Button";
 import FormField from "@/components/molecules/FormField";
 import StatusIndicator from "@/components/molecules/StatusIndicator";
+import proxyService from "@/services/api/proxyService";
 
 const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => {
   const [videoUrl, setVideoUrl] = useState("");
   const [tabCount, setTabCount] = useState(5);
-  const [proxies, setProxies] = useState("");
+  const [useAutoProxies, setUseAutoProxies] = useState(true);
+  const [manualProxies, setManualProxies] = useState("");
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [proxyStats, setProxyStats] = useState(null);
 
   const validateYouTubeUrl = (url) => {
     const patterns = [
@@ -21,7 +25,7 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
     return patterns.some(pattern => pattern.test(url));
   };
 
-  const parseProxies = (proxyText) => {
+const parseManualProxies = (proxyText) => {
     if (!proxyText.trim()) return [];
     
     const lines = proxyText.trim().split("\n");
@@ -32,6 +36,29 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
         return { address, port: parseInt(port), protocol: "http", status: "unchecked" };
       })
       .filter(proxy => proxy.address && proxy.port);
+  };
+
+  const fetchAutoProxies = async () => {
+    try {
+      setIsLoading(true);
+      toast.info("Fetching proxies from internet...");
+      
+      const result = await proxyService.getValidatedProxies(tabCount * 2);
+      setProxyStats(result);
+      
+      if (result.working === 0) {
+        throw new Error("No working proxies found");
+      }
+      
+      toast.success(`Found ${result.working} working proxies`);
+      return result.proxies;
+    } catch (error) {
+      console.error("Auto proxy fetch failed:", error);
+      toast.error(`Failed to fetch proxies: ${error.message}`);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const validateForm = () => {
@@ -47,36 +74,52 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
       newErrors.tabCount = "Tab count must be between 1 and 20";
     }
 
-    const parsedProxies = parseProxies(proxies);
-    if (parsedProxies.length === 0 && proxies.trim()) {
-      newErrors.proxies = "Please enter valid proxy addresses in format IP:PORT";
+if (!useAutoProxies) {
+      const parsedProxies = parseManualProxies(manualProxies);
+      if (parsedProxies.length === 0 && manualProxies.trim()) {
+        newErrors.proxies = "Please enter valid proxy addresses in format IP:PORT";
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleStart = () => {
+const handleStart = async () => {
     if (!validateForm()) {
       toast.error("Please fix the form errors");
       return;
     }
 
-    const videoType = videoUrl.includes("/shorts/") ? "short" : "video";
-    const parsedProxies = parseProxies(proxies);
+    try {
+      setIsLoading(true);
+      const videoType = videoUrl.includes("/shorts/") ? "short" : "video";
+      
+      let proxies = [];
+      if (useAutoProxies) {
+        proxies = await fetchAutoProxies();
+      } else {
+        proxies = parseManualProxies(manualProxies);
+      }
 
-    const sessionData = {
-      videoUrl: videoUrl.trim(),
-      videoType,
-      tabCount,
-      proxies: parsedProxies,
-      status: "running",
-      startTime: new Date(),
-      viewCount: 0
-    };
+      const sessionData = {
+        videoUrl: videoUrl.trim(),
+        videoType,
+        tabCount,
+        proxies,
+        useAutoProxies,
+        status: "running",
+        startTime: new Date(),
+        viewCount: 0
+      };
 
-    onStartSession(sessionData);
-    toast.success(`Started viewing session with ${tabCount} tabs`);
+      onStartSession(sessionData);
+      toast.success(`Started viewing session with ${tabCount} tabs and ${proxies.length} proxies`);
+    } catch (error) {
+      toast.error("Failed to start session");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStop = () => {
@@ -99,8 +142,8 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
     }
   };
 
-  const handleProxiesChange = (e) => {
-    setProxies(e.target.value);
+const handleManualProxiesChange = (e) => {
+    setManualProxies(e.target.value);
     if (errors.proxies) {
       setErrors({ ...errors, proxies: "" });
     }
@@ -169,16 +212,71 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
               </div>
             </div>
           </div>
+<div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-300">Proxy Mode:</label>
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="proxyMode"
+                    checked={useAutoProxies}
+                    onChange={() => setUseAutoProxies(true)}
+                    className="text-primary focus:ring-primary"
+                  />
+                  <span className="text-white">Auto-fetch from Internet</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="proxyMode"
+                    checked={!useAutoProxies}
+                    onChange={() => setUseAutoProxies(false)}
+                    className="text-primary focus:ring-primary"
+                  />
+                  <span className="text-white">Manual Entry</span>
+                </label>
+              </div>
+            </div>
 
-          <FormField
-            label="Proxy List (Optional)"
-            type="textarea"
-            placeholder="192.168.1.1:8080&#10;10.0.0.1:3128&#10;proxy.example.com:8080"
-            value={proxies}
-            onChange={handleProxiesChange}
-            error={errors.proxies}
-            className="min-h-[100px]"
-          />
+            {useAutoProxies ? (
+              <div className="bg-background border border-secondary/20 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <ApperIcon name="Globe" className="w-5 h-5 text-primary" />
+                  <span className="text-white font-medium">Automatic Proxy Fetching</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-3">
+                  Proxies will be automatically fetched from reliable internet sources when the session starts.
+                </p>
+                {proxyStats && (
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <span className="text-gray-400">Total Found:</span>
+                      <span className="text-white ml-1">{proxyStats.total}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Validated:</span>
+                      <span className="text-white ml-1">{proxyStats.validated}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Working:</span>
+                      <span className="text-success ml-1">{proxyStats.working}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <FormField
+                label="Manual Proxy List"
+                type="textarea"
+                placeholder="192.168.1.1:8080&#10;10.0.0.1:3128&#10;proxy.example.com:8080"
+                value={manualProxies}
+                onChange={handleManualProxiesChange}
+                error={errors.proxies}
+                className="min-h-[100px]"
+              />
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -193,9 +291,14 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
                 <span className="text-gray-400">Views Generated:</span>
                 <span className="text-success font-medium">{session?.viewCount || 0}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Proxies Loaded:</span>
-                <span className="text-white">{parseProxies(proxies).length}</span>
+<div className="flex justify-between">
+                <span className="text-gray-400">Proxies:</span>
+                <span className="text-white">
+                  {useAutoProxies ? 
+                    (proxyStats ? `${proxyStats.working} auto` : "Auto-fetch") : 
+                    parseManualProxies(manualProxies).length
+                  }
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Status:</span>
@@ -207,14 +310,23 @@ const ControlPanel = ({ onStartSession, onStopSession, session, isRunning }) => 
           </div>
 
           <div className="space-y-3">
-            {!isRunning ? (
+{!isRunning ? (
               <Button 
                 onClick={handleStart}
                 className="w-full"
-                disabled={!videoUrl.trim()}
+                disabled={!videoUrl.trim() || isLoading}
               >
-                <ApperIcon name="Play" className="w-5 h-5 mr-2" />
-                Start Session
+                {isLoading ? (
+                  <>
+                    <ApperIcon name="Loader2" className="w-5 h-5 mr-2 animate-spin" />
+                    {useAutoProxies ? "Fetching Proxies..." : "Starting..."}
+                  </>
+                ) : (
+                  <>
+                    <ApperIcon name="Play" className="w-5 h-5 mr-2" />
+                    Start Session
+                  </>
+                )}
               </Button>
             ) : (
               <Button 
